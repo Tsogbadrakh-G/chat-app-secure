@@ -25,6 +25,7 @@ class ChannelScreen extends ConsumerStatefulWidget {
 class _ChatPageState extends ConsumerState<ChannelScreen> {
   TextEditingController messagecontroller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  String? fcmToSend;
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -36,8 +37,14 @@ class _ChatPageState extends ConsumerState<ChannelScreen> {
     }
   }
 
+  getFcm() async {
+    fcmToSend = await ref.read(userController.notifier).fetchThisUserFCM(widget.chatRoomId);
+  }
+
   @override
   void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    getFcm();
     isUserInChatPage = true;
     if (widget.message != null) {
       ref.read(userController.notifier).addMessage(
@@ -55,68 +62,63 @@ class _ChatPageState extends ConsumerState<ChannelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-        future: ref.read(userController.notifier).fetchThisUserFCM(widget.chatRoomId),
-        builder: (context, snapshot) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-          return Scaffold(
-            appBar: ChannelAppBar(thisChannelUsername: widget.thisChannelUsername),
-            backgroundColor: Colors.white,
-            body: Stack(
-              children: [
-                ValueListenableBuilder<List<Message>>(
-                    valueListenable: ref.read(userController.notifier).messages[widget.chatRoomId]!,
-                    builder: (a, b, c) {
-                      return SizedBox(
-                        width: double.infinity,
-                        height: double.infinity,
-                        child: ListView.builder(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.only(bottom: 100),
-                            itemCount: (ref.read(userController.notifier).messages[widget.chatRoomId]?.value ?? []).length,
-                            itemBuilder: (context, index) => ChatItem(
-                                  message: ref.read(userController.notifier).getMessage(widget.chatRoomId, index).message,
-                                  sendByMe: ref.read(userController.notifier).getMessage(widget.chatRoomId, index).senderName ==
-                                      ref.read(userController).myUserName,
-                                )),
-                      );
-                    }),
-                Container(
-                  margin: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
-                  alignment: Alignment.bottomCenter,
-                  child: Material(
-                    elevation: 5.0,
-                    borderRadius: BorderRadius.circular(30),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
-                      child: TextField(
-                        controller: messagecontroller,
-                        decoration: InputDecoration(
-                            border: InputBorder.none,
-                            hintText: "Type a message",
-                            hintStyle: const TextStyle(color: Colors.black45),
-                            suffixIcon: GestureDetector(
-                                onTap: () {
-                                  ref.read(socketClientProvider).sendMessage({
-                                    "type": "message",
-                                    "roomId": widget.chatRoomId,
-                                    "content": messagecontroller.text,
-                                    "sender_name": ref.read(userController).myUserName,
-                                    "fcm": snapshot.data ?? ""
-                                  });
+    return Scaffold(
+      appBar: ChannelAppBar(thisChannelUsername: widget.thisChannelUsername),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          ValueListenableBuilder<List<Message>>(
+              valueListenable: ref.read(userController.notifier).messages[widget.chatRoomId]!,
+              builder: (a, b, c) {
+                return SizedBox(
+                  width: double.infinity,
+                  height: double.infinity,
+                  child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: (ref.read(userController.notifier).messages[widget.chatRoomId]?.value ?? []).length,
+                      itemBuilder: (context, index) => ChatItem(
+                            message: ref.read(userController.notifier).getMessage(widget.chatRoomId, index).message,
+                            sendByMe: ref.read(userController.notifier).getMessage(widget.chatRoomId, index).senderName ==
+                                ref.read(userController).myUserName,
+                          )),
+                );
+              }),
+          Container(
+            margin: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
+            alignment: Alignment.bottomCenter,
+            child: Material(
+              elevation: 5.0,
+              borderRadius: BorderRadius.circular(30),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+                child: TextField(
+                  controller: messagecontroller,
+                  decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: "Type a message",
+                      hintStyle: const TextStyle(color: Colors.black45),
+                      suffixIcon: GestureDetector(
+                          onTap: () {
+                            ref.read(socketClientProvider).sendMessage({
+                              "type": "message",
+                              "roomId": widget.chatRoomId,
+                              "content": messagecontroller.text,
+                              "sender_name": ref.read(userController).myUserName,
+                              "fcm": fcmToSend ?? ""
+                            });
 
-                                  messagecontroller.clear();
-                                },
-                                child: const Icon(Icons.send_rounded))),
-                      ),
-                    ),
-                  ),
+                            messagecontroller.clear();
+                          },
+                          child: const Icon(Icons.send_rounded))),
                 ),
-              ],
+              ),
             ),
-          );
-        });
+          ),
+        ],
+      ),
+    );
   }
 
   @override

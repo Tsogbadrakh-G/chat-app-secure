@@ -1,6 +1,4 @@
 import 'dart:developer';
-
-import 'package:chat_app_secure/constants.dart';
 import 'package:chat_app_secure/controller/database_controller.dart';
 import 'package:chat_app_secure/views/channel_view.dart';
 import 'package:chat_app_secure/views/welcome_view.dart';
@@ -41,6 +39,7 @@ class UserState {
 class UserController extends StateNotifier<UserState> {
   UserController() : super(const UserState('', '', ''));
   Map<String, ValueNotifier<List<Message>>> messages = {};
+  //List
   bool isUserInChatPage = false;
 
   addMessage(String chatRoomId, Message message) {
@@ -82,14 +81,6 @@ class UserController extends StateNotifier<UserState> {
     String fcm = "${user["Id"]}";
 
     return fcm;
-  }
-
-  Future<void> sendMessage(String receiverFcm, String message) async {
-    dio.post('http://$hostname:3000/', data: {
-      'fcm': receiverFcm,
-      'message': message,
-      'sender_username': state.myUserName,
-    });
   }
 
   getChatRoomIdbyUsername(String a, String b) {

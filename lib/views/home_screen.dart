@@ -74,7 +74,6 @@ class _HomeScreen extends ConsumerState<HomeScreen> {
         body: RefreshIndicator(
           onRefresh: () async {
             ref.read(snapshot.notifier).state = await FirebaseFirestore.instance.collection("chatrooms").get();
-            //setState(() {});
             refresh.value = !refresh.value;
           },
           child: CustomScrollView(
@@ -187,14 +186,12 @@ class _HomeScreen extends ConsumerState<HomeScreen> {
                   ),
                 )
               ] else if (focused && users.isEmpty) ...[
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                      height: MediaQuery.sizeOf(context).height * 2 / 3,
-                      child: const Center(
-                          child: Text(
-                        'No item',
-                        style: TextStyle(fontFamily: 'Nunito'),
-                      ))),
+                const SliverFillRemaining(
+                  child: Center(
+                      child: Text(
+                    'No item',
+                    style: TextStyle(fontFamily: 'Nunito'),
+                  )),
                 )
               ] else ...[
                 roomSnapshot == null
@@ -203,7 +200,7 @@ class _HomeScreen extends ConsumerState<HomeScreen> {
                         child: Text('Loading...'),
                       ))
                     : roomSnapshot.docs.isEmpty
-                        ? const SliverToBoxAdapter(
+                        ? const SliverFillRemaining(
                             child: Center(
                             child: Text('No active rooms'),
                           ))

@@ -5,14 +5,16 @@ import 'dart:developer';
 import 'package:chat_app_secure/alerts/alert.dart';
 import 'package:chat_app_secure/constants.dart';
 import 'package:chat_app_secure/controller/user_controller.dart';
+import 'package:chat_app_secure/firebase.dart';
 import 'package:chat_app_secure/views/home_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-class LogInScreen extends ConsumerStatefulWidget {
+class LogInScreen extends StatefulHookConsumerWidget {
   const LogInScreen({super.key});
 
   @override
@@ -20,7 +22,7 @@ class LogInScreen extends ConsumerStatefulWidget {
 }
 
 class _LogInState extends ConsumerState<LogInScreen> {
-  String email = "", password = "", name = "", pic = "", username = "", id = "", userNativeLan = '';
+  late ValueNotifier<String> email, password;
   TextEditingController usermailcontroller = TextEditingController();
   TextEditingController userpasswordcontroller = TextEditingController();
   FocusNode focusNode1 = FocusNode();
@@ -28,7 +30,7 @@ class _LogInState extends ConsumerState<LogInScreen> {
 
   bool _isEmptyMail = false;
   bool _isEmptyPass = false;
-  bool isValidMail = false;
+
   bool isValidPass = false;
   final _formkey = GlobalKey<FormState>();
   ValueNotifier<bool> isLogging = ValueNotifier<bool>(false);
@@ -59,13 +61,13 @@ class _LogInState extends ConsumerState<LogInScreen> {
   login() async {
     try {
       isLogging.value = true;
-      email = email.toLowerCase();
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      email.value = email.value.toLowerCase();
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email.value, password: password.value);
 
-      int atIndex = email.indexOf('@');
-      String username = email.substring(0, atIndex);
+      int atIndex = email.value.indexOf('@');
+      String username = email.value.substring(0, atIndex);
 
-      ref.read(userController.notifier).saveUser(email, username);
+      ref.read(userController.notifier).saveUser(email.value, username);
       final rooms = await FirebaseFirestore.instance.collection("chatrooms").get();
       for (var room in rooms.docs) {
         log('room: ${room.id}');
@@ -83,7 +85,7 @@ class _LogInState extends ConsumerState<LogInScreen> {
       String? ui = user?.uid;
 
       await ref.read(userController.notifier).saveUserInfoToCloud(userInfoMap, ui ?? '');
-      //ref.read(firebaseUtils).getUserToken();
+      ref.read(firebaseUtils).getUserToken();
     } on FirebaseAuthException catch (e) {
       if (e.code == 'user-not-found') {
         Alerts.showMyDialog(context, 'There are no registered users you have entered!');
@@ -104,6 +106,9 @@ class _LogInState extends ConsumerState<LogInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ValueNotifier<bool> isValidEmail = useState(false);
+    email = useState("");
+    password = useState("");
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -135,9 +140,7 @@ class _LogInState extends ConsumerState<LogInScreen> {
                 'assets/images/ic_splash.png',
                 scale: 1.5,
               ),
-              const SizedBox(
-                height: 30,
-              ),
+              const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
                 child: Form(
@@ -150,15 +153,13 @@ class _LogInState extends ConsumerState<LogInScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: TextFormField(
                           onChanged: (value) {
-                            setState(() {
-                              isValidMail = EmailValidator.validate(value);
-                            });
+                            isValidEmail.value = EmailValidator.validate(value);
                           },
                           focusNode: focusNode1,
                           textAlignVertical: TextAlignVertical.center,
                           controller: usermailcontroller,
                           decoration: InputDecoration(
-                            suffixIcon: isValidMail
+                            suffixIcon: isValidEmail.value
                                 ? const Icon(
                                     Icons.check_circle_outline,
                                     color: Color(
@@ -185,9 +186,7 @@ class _LogInState extends ConsumerState<LogInScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(
-                        height: 5.0,
-                      ),
+                      const SizedBox(height: 8.0),
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
@@ -213,22 +212,18 @@ class _LogInState extends ConsumerState<LogInScreen> {
                           obscureText: true,
                         ),
                       ),
-                      const SizedBox(
-                        height: 5.0,
-                      ),
+                      const SizedBox(height: 24.0),
                       Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 35),
                         width: double.infinity,
-                        padding: const EdgeInsets.fromLTRB(0, 20, 0, 10),
+                        height: 40,
+                        margin: const EdgeInsets.symmetric(horizontal: 35),
                         child: ElevatedButton(
                           onPressed: () {
                             validator();
                             if (!_isEmptyMail && !_isEmptyPass) {
                               if (_formkey.currentState!.validate()) {
-                                setState(() {
-                                  email = usermailcontroller.text;
-                                  password = userpasswordcontroller.text;
-                                });
+                                email.value = usermailcontroller.text;
+                                password.value = userpasswordcontroller.text;
                               }
                               login();
                             }
@@ -254,9 +249,6 @@ class _LogInState extends ConsumerState<LogInScreen> {
                                 );
                               }),
                         ),
-                      ),
-                      const SizedBox(
-                        height: 5.0,
                       ),
                     ],
                   ),
